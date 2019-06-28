@@ -9,6 +9,7 @@ A FreeBASIC demo where you control an asterisk, the Computer controls a little r
 
 ## Requirements
 - The [FreeBASIC](https://www.freebasic.net/) compiler, basically :grin:
+- If you use Windows and just want to try the demo, go to the [Releases](https://github.com/JJFlashit/digital-tag/releases) section and download the compiled program
 
 ## Post-mortem notes
 If I see even a tiny bit of interest in this project I'll add some production notes regarding this little program of mine (on which I spent two months and a half, in the spare time).
