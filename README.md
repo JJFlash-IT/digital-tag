@@ -15,4 +15,5 @@ A FreeBASIC demo where you control an asterisk, the Computer controls a little r
 If I see even a tiny bit of interest in this project I'll add some production notes regarding this little program of mine (on which I spent two months and a half, in the spare time).
 
 For now, I'll say that English is not my first language, I tried my best to add meaningful comments to the source :slightly_smiling_face:
+
 Also, most of the maps included were converted or produced with the Daedalus program. **Slot Racers** and **Miniature Golf** are two old Atari 2600 games.
