@@ -9,3 +9,8 @@ A FreeBASIC demo where you control an asterisk, the Computer controls a little r
 
 ## Requirements
 - The [FreeBASIC](https://www.freebasic.net/) compiler, basically :grin:
+
+## Post-mortem notes
+If I see even a tiny bit of interest in this project I'll add some production notes regarding this little program of mine (on which I spent two months and a half, in the spare time).
+
+For now, I'll say that English is not my first language, I tried my best to add meaningful comments to the source :slightly_smiling_face:
