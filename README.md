@@ -8,6 +8,7 @@ A FreeBASIC demo where you control a white asterisk, the Computer controls a lit
 - Main trick is Walter D. Pullen's Chain Algorithm, from his Daedalus program (see the [Algorithms](https://www.astrolog.org/labyrnth/algrithm.htm#solve) page, and the [Daedalus](https://www.astrolog.org/labyrnth/daedalus.htm) page)
 - Cross product of Vectors! :scream: (Idea taken from [StackOverflow](https://stackoverflow.com/a/11908158))
 - A touch of Bresenham's Line Algorithm (adapted and simplified from the pseudocode at the [Wikipedia](https://en.wikipedia.org/wiki/Bresenham's_line_algorithm#All_cases) page)
+- Compile in Debug Mode and see the Chain Algorithm in action
 
 ## Requirements
 - The [FreeBASIC](https://www.freebasic.net/) compiler, basically :grin:
