@@ -403,7 +403,7 @@ If bMoveNow Then 'Half the time, the Computer doesn't move, so it moves half the
 				If (tWallVectorDir.IncrRow And tComputerPoint.Row = tOnTheWallPosition.Row) Or _
 					(tWallVectorDir.IncrCol And tComputerPoint.Col = tOnTheWallPosition.Col) Then bPledgeMode = False
 				
-				'Here I'm measuring the distance between the Simulator and the Player, and also the one between the Computer (CurrentPosition) and the Player
+				'Here I'm measuring the distance between the Simulator and the Player, and also the one between the Computer and the Player
 				tWllFllwSimulDistance.RowDiff = Abs(tPlayerPoint.Row - .CurrentPosition.Row)
 				tWllFllwSimulDistance.ColDiff = Abs(tPlayerPoint.Col - .CurrentPosition.Col)
 				tWllFllwPlayerDistance.RowDiff = Abs(tPlayerPoint.Row - tComputerPoint.Row)
