@@ -125,5 +125,5 @@ DiagonalEnd:
         endif
 
 skipMovement:
-        inc bMoveNow! : bMoveNow! = bMoveNow! & 1
+        bMoveNow! = bMoveNow! ^ 1 ' Exclusive OR...
 goto mainLoop
