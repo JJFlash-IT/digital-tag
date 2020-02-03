@@ -7,16 +7,6 @@ const PLAYER_CHAR! = 42 ' "*"
 const COMPUTER_CHAR! = 0 ' "@"
 const EMPTY_CHAR! = 32 ' " "
 
-const MAXDIR! = 3
-dim nDirectionScalar!
-data aDirections_Y[] = -1, 0, 1, 0 ' north, east, south, west
-data aDirections_X[] = 0, 1, 0, -1 ' north, east, south, west
-
-poke 53280, 0: poke 53281, 0
-data mazebin![] = incbin "maze.bin"
-memset $d800, 1000, 8
-memcpy @mazebin!, $0400, 1000
-
 dim screenColorArray![1000] @$d800
 
 fun screen_peek!(screen_x!, screen_y!)
@@ -31,17 +21,33 @@ dim tFuturePoint_x! : dim tFuturePoint_y!
 bMoveNow! = 0
 
 dim tVecComputerPlayer_Xdiff : dim tVecComputerPlayer_Ydiff : dim tVecComputerPlayer_XdiffABS : dim tVecComputerPlayer_YdiffABS
+dim tVecWallToSimulator_Xdiff : dim tVecWallToSimulator_Ydiff
 dim tVectorDir_X : dim tVectorDir_Y
 dim tWallVectorDir_X : dim tWallVectorDir_Y
 dim tOnTheWallPosition_Y!: dim tOnTheWallPosition_X!
-dim nBresenhamDiff : dim nThresholdCrProd
+dim nBresenhamDiff : dim nCrossProduct : dim nThresholdCrProd
 bLineMoreVertical! = 0
 
-Const CURRENTPOS_Y! = 0 : Const CURRENTPOS_X! = 1 : Const SIMWALKDIR! = 2 : Const SIMSTARTDIR! = 3 : Const SIMBLOCKDIR! = 4
-dim aSimulators![2, 5]
+const MAXDIR! = 3
+dim nDirectionScalar!
+data aDirections_Y[] = -1, 0, 1, 0 ' north, east, south, west
+data aDirections_X[] = 0, 1, 0, -1 ' north, east, south, west
+
+Const CURRENTPOS_Y! = 0 : Const CURRENTPOS_X! = 1 : Const SIMWALKDIR! = 2 : Const SIMSTARTDIR! = 3 : Const SIMBLOCKDIR! = 4 : Const SIMTURNBLOCK! = 5
+dim aSimulators![2, 6]
+aSimulators![0, SIMTURNBLOCK!] = 1 ' Clockwise
+aSimulators![1, SIMTURNBLOCK!] = 255 'Anticlockwise - Simulates -1 !
 dim nSimulatorNumber!
 
+bWllFllwMode! = 0
+bPledgeMode! = 0
+
 dim nFastIndex! fast
+
+poke 53280, 0: poke 53281, 0
+data mazebin![] = incbin "maze.bin"
+memset $d800, 1000, 8
+memcpy @mazebin!, $0400, 1000
 
 mainLoop:
     screenColorArray![(cast(tPlayer_y!) * 40) + tPlayer_x!] = 1
@@ -80,115 +86,160 @@ mainLoop:
 
     '--------------------------------------------Computer movement------------------------------------------------------
     on bMoveNow! goto skipMovement, doMovement
-doMovement:
-        tVecComputerPlayer_Xdiff = cast(tPlayer_x!) - tComputer_x!
-        tVecComputerPlayer_XdiffABS = abs(tVecComputerPlayer_Xdiff)
-        tVecComputerPlayer_Ydiff = cast(tPlayer_y!) - tComputer_y!
-        tVecComputerPlayer_YdiffABS = abs(tVecComputerPlayer_Ydiff)
-        if tVecComputerPlayer_YdiffABS >= tVecComputerPlayer_XdiffABS Then bLineMoreVertical! = 1 Else bLineMoreVertical! = 0
-        tVectorDir_X = sgn(tVecComputerPlayer_Xdiff)
-        tVectorDir_Y = sgn(tVecComputerPlayer_Ydiff)
-        on bLineMoreVertical! goto BresenhamVertical, BresenhamHorizontal
-BresenhamVertical:
-            nBresenhamDiff = 2 * tVecComputerPlayer_XdiffABS - tVecComputerPlayer_YdiffABS
-            goto BresenhamEnd
-BresenhamHorizontal:
-            nBresenhamDiff = 2 * tVecComputerPlayer_YdiffABS - tVecComputerPlayer_XdiffABS
-BresenhamEnd:
-        if nBresenhamDiff <= 0 then
-            on bLineMoreVertical! goto LineMoreVerticalFalse, LineMoreVerticalTrue
-LineMoreVerticalFalse:
-                tVectorDir_Y = 0
-                goto LineMoreVerticalEnd
-LineMoreVerticalTrue:
-                tVectorDir_X = 0
-LineMoreVerticalEnd:        
-        endif
-
-        tFuturePoint_y! = cast!(cast(tComputer_y!) + tVectorDir_Y)
-        if screen_peek!(tComputer_x!, tFuturePoint_y!) = WALL! then
-            tWallVectorDir_Y = tVectorDir_Y
-        else
-            tWallVectorDir_Y = 0
-        endif
-        
-        tWallVectorDir_X = 0
-        if tWallVectorDir_Y = 0 then
-            tFuturePoint_x! = cast!(cast(tComputer_x!) + tVectorDir_X)
-            if screen_peek!(tFuturePoint_x!, tComputer_y!) = WALL! then
-                tWallVectorDir_X = tVectorDir_X
-            endif
-        endif
-
-        if tWallVectorDir_X <> 0 or tWallVectorDir_Y <> 0 then
-            '-------------------------- WALL HANDLING -------------------------
-            nFastIndex! = 0
-            repeat
-                'short circuiting
-                if tWallVectorDir_Y = aDirections_Y[nFastIndex!] then
-                    if tWallVectorDir_X = aDirections_X[nFastIndex!] then
-                        nDirectionScalar! = nFastIndex!
-                        nFastIndex! = MAXDIR! 'early exit!
+        doMovement:
+            on bWllFllwMode goto WallFollowFalse, WallFollowTrue
+                WallFollowFalse:
+                    tVecComputerPlayer_Xdiff = cast(tPlayer_x!) - tComputer_x!
+                    tVecComputerPlayer_XdiffABS = abs(tVecComputerPlayer_Xdiff)
+                    tVecComputerPlayer_Ydiff = cast(tPlayer_y!) - tComputer_y!
+                    tVecComputerPlayer_YdiffABS = abs(tVecComputerPlayer_Ydiff)
+                    if tVecComputerPlayer_YdiffABS >= tVecComputerPlayer_XdiffABS Then bLineMoreVertical! = 1 Else bLineMoreVertical! = 0
+                    tVectorDir_X = sgn(tVecComputerPlayer_Xdiff)
+                    tVectorDir_Y = sgn(tVecComputerPlayer_Ydiff)
+                    on bLineMoreVertical! goto BresenhamVertical, BresenhamHorizontal
+                        BresenhamVertical:
+                            nBresenhamDiff = 2 * tVecComputerPlayer_XdiffABS - tVecComputerPlayer_YdiffABS
+                            goto BresenhamEnd
+                        BresenhamHorizontal:
+                            nBresenhamDiff = 2 * tVecComputerPlayer_YdiffABS - tVecComputerPlayer_XdiffABS
+                    BresenhamEnd:
+                    if nBresenhamDiff <= 0 then
+                        on bLineMoreVertical! goto LineMoreVerticalFalse, LineMoreVerticalTrue
+                            LineMoreVerticalFalse:
+                                tVectorDir_Y = 0
+                                goto LineMoreVerticalEnd
+                            LineMoreVerticalTrue:
+                                tVectorDir_X = 0
+                        LineMoreVerticalEnd:
                     endif
-                endif
-                inc nFastIndex!
-            until nFastIndex! = 4 'MAXDIR! + 1
 
-            tOnTheWallPosition_Y! = cast!(cast(tComputer_y!) + tWallVectorDir_Y)
-            tOnTheWallPosition_X! = cast!(cast(tComputer_x!) + tWallVectorDir_X)
-            tVecComputerPlayer_Xdiff = cast(tPlayer_x!) - tOnTheWallPosition_X!
-            tVecComputerPlayer_XdiffABS = abs(tVecComputerPlayer_Xdiff)
-            tVecComputerPlayer_Ydiff = cast(tPlayer_y!) - tOnTheWallPosition_Y!
-            tVecComputerPlayer_YdiffABS = abs(tVecComputerPlayer_Ydiff)
-            if tVecComputerPlayer_YdiffABS >= tVecComputerPlayer_XdiffABS Then bLineMoreVertical! = 1 Else bLineMoreVertical! = 0
-            on bLineMoreVertical! goto MoreVertThresholdFalse, MoreVertThresholdTrue
-MoreVertThresholdFalse:
-                nThresholdCrProd = rshift(tVecComputerPlayer_XdiffABS)
-                goto MoreVertThresholdEnd
-MoreVertThresholdTrue:
-                nThresholdCrProd = rshift(tVecComputerPlayer_YdiffABS)
-MoreVertThresholdEnd:
+                    tFuturePoint_y! = cast!(cast(tComputer_y!) + tVectorDir_Y)
+                    if screen_peek!(tComputer_x!, tFuturePoint_y!) = WALL! then
+                        tWallVectorDir_Y = tVectorDir_Y
+                    else
+                        tWallVectorDir_Y = 0
+                    endif
+                    
+                    tWallVectorDir_X = 0
+                    if tWallVectorDir_Y = 0 then
+                        tFuturePoint_x! = cast!(cast(tComputer_x!) + tVectorDir_X)
+                        if screen_peek!(tFuturePoint_x!, tComputer_y!) = WALL! then
+                            tWallVectorDir_X = tVectorDir_X
+                        endif
+                    endif
 
-            'Simulator INIT
-            aSimulators![0, CURRENTPOS_Y!] = tComputer_y!
-            aSimulators![0, CURRENTPOS_X!] = tComputer_x!
-            aSimulators![0, SIMWALKDIR!] = (nDirectionScalar! + 1) & MAXDIR!
-            aSimulators![0, SIMSTARTDIR!] = aSimulators![0, SIMWALKDIR!]
+                    if tWallVectorDir_X <> 0 or tWallVectorDir_Y <> 0 then
+                        '-------------------------- WALL HANDLING -------------------------
+                        nFastIndex! = 0
+                        repeat
+                            'short circuiting
+                            if tWallVectorDir_Y = aDirections_Y[nFastIndex!] then
+                                if tWallVectorDir_X = aDirections_X[nFastIndex!] then
+                                    nDirectionScalar! = nFastIndex!
+                                    nFastIndex! = MAXDIR! 'early exit!
+                                endif
+                            endif
+                            inc nFastIndex!
+                        until nFastIndex! = 4 'MAXDIR! + 1
 
-            aSimulators![1, CURRENTPOS_Y!] = tComputer_y!
-            aSimulators![1, CURRENTPOS_X!] = tComputer_x!
-            aSimulators![1, SIMWALKDIR!] = (nDirectionScalar! - 1) & MAXDIR!
-            aSimulators![1, SIMSTARTDIR!] = aSimulators![1, SIMWALKDIR!]
+                        tOnTheWallPosition_Y! = cast!(cast(tComputer_y!) + tWallVectorDir_Y)
+                        tOnTheWallPosition_X! = cast!(cast(tComputer_x!) + tWallVectorDir_X)
+                        tVecComputerPlayer_Xdiff = cast(tPlayer_x!) - tOnTheWallPosition_X!
+                        tVecComputerPlayer_XdiffABS = abs(tVecComputerPlayer_Xdiff)
+                        tVecComputerPlayer_Ydiff = cast(tPlayer_y!) - tOnTheWallPosition_Y!
+                        tVecComputerPlayer_YdiffABS = abs(tVecComputerPlayer_Ydiff)
+                        if tVecComputerPlayer_YdiffABS >= tVecComputerPlayer_XdiffABS Then bLineMoreVertical! = 1 Else bLineMoreVertical! = 0
+                        on bLineMoreVertical! goto MoreVertThresholdFalse, MoreVertThresholdTrue
+                            MoreVertThresholdFalse:
+                                nThresholdCrProd = rshift(tVecComputerPlayer_XdiffABS)
+                                goto MoreVertThresholdEnd
+                            MoreVertThresholdTrue:
+                                nThresholdCrProd = rshift(tVecComputerPlayer_YdiffABS)
+                        MoreVertThresholdEnd:
 
-            'Simulator LAUNCH
-SimulatorLoopStart:
-            nFastIndex! = 0
-            repeat
-                CheckWallStartLoop:
-                    tFuturePoint_y! = aSimulators![nFastIndex!, CURRENTPOS_Y!] + aDirections_Y[aSimulators![nFastIndex!, SIMWALKDIR!]]
-                    tFuturePoint_x! = aSimulators![nFastIndex!, CURRENTPOS_X!] + aDirections_X[aSimulators![nFastIndex!, SIMWALKDIR!]]
-            until nFastIndex! = 2
-            goto SimulatorLoopStart
-SimulatorLoopExit:
-            nSimulatorNumber! = nFastIndex!
+                        'Simulator INIT
+                        aSimulators![0, CURRENTPOS_Y!] = tComputer_y!
+                        aSimulators![0, CURRENTPOS_X!] = tComputer_x!
+                        aSimulators![0, SIMWALKDIR!] = (nDirectionScalar! + 1) & MAXDIR!
+                        aSimulators![0, SIMSTARTDIR!] = aSimulators![0, SIMWALKDIR!]
 
+                        aSimulators![1, CURRENTPOS_Y!] = tComputer_y!
+                        aSimulators![1, CURRENTPOS_X!] = tComputer_x!
+                        aSimulators![1, SIMWALKDIR!] = (nDirectionScalar! - 1) & MAXDIR!
+                        aSimulators![1, SIMSTARTDIR!] = aSimulators![1, SIMWALKDIR!]
 
+                        'Simulator LAUNCH
+                        SimulatorLoopStart:
+                            nFastIndex! = 0
+                            repeat
+                                CheckWallStartLoop:
+                                    tFuturePoint_y! = aSimulators![nFastIndex!, CURRENTPOS_Y!] + aDirections_Y[aSimulators![nFastIndex!, SIMWALKDIR!]]
+                                    tFuturePoint_x! = aSimulators![nFastIndex!, CURRENTPOS_X!] + aDirections_X[aSimulators![nFastIndex!, SIMWALKDIR!]]
+                                    if screen_peek!(tFuturePoint_x!, tFuturePoint_y!) <> WALL! Then Goto CheckWallExitLoop
+                                    aSimulators![nFastIndex!, SIMWALKDIR!] = (aSimulators![nFastIndex!, SIMWALKDIR!] + aSimulators![nFastIndex!, SIMTURNBLOCK!]) & MAXDIR!
+                                goto CheckWallStartLoop
+                                CheckWallExitLoop:
 
+                                aSimulators![nFastIndex!, CURRENTPOS_Y!] = tFuturePoint_y!
+                                aSimulators![nFastIndex!, CURRENTPOS_X!] = tFuturePoint_x!
+                                
+                                tVecWallToSimulator_Ydiff = cast(aSimulators![nFastIndex!, CURRENTPOS_Y!]) - tOnTheWallPosition_Y!
+                                tVecWallToSimulator_Xdiff = cast(aSimulators![nFastIndex!, CURRENTPOS_X!]) - tOnTheWallPosition_X!
+                                
+                                nCrossProduct = abs((tVecWallToSimulator_Xdiff * tVecComputerPlayer_Ydiff) - (tVecWallToSimulator_Ydiff * tVecComputerPlayer_Xdiff))
+                                if nCrossProduct <= nThresholdCrProd then
+                                    on bLineMoreVertical goto LineMoreVertCrossProdFalse, LineMoreVertCrossProdTrue
+                                        LineMoreVertCrossProdFalse:
+                                            if tVecComputerPlayer_Xdiff > 0 then
+                                                if tOnTheWallPosition_X! <= aSimulators![nFastIndex!, CURRENTPOS_X!] and aSimulators![nFastIndex!, CURRENTPOS_X!] <= tPlayer_x! then goto SimulatorLoopExit
+                                            else
+                                                if tPlayer_x! <= aSimulators![nFastIndex!, CURRENTPOS_X!] and aSimulators![nFastIndex!, CURRENTPOS_X!] <= tOnTheWallPosition_X! then goto SimulatorLoopExit
+                                            endif
+                                            goto LineMoreVertCrossProdEnd
+                                        LineMoreVertCrossProdTrue:
+                                            if tVecComputerPlayer_Ydiff > 0 then
+                                                if tOnTheWallPosition_Y! <= aSimulators![nFastIndex!, CURRENTPOS_Y!] and aSimulators![nFastIndex!, CURRENTPOS_Y!] <= tPlayer_y! then goto SimulatorLoopExit
+                                            else
+                                                if tPlayer_y! <= aSimulators![nFastIndex!, CURRENTPOS_Y!] and aSimulators![nFastIndex!, CURRENTPOS_Y!] <= tOnTheWallPosition_Y! then goto SimulatorLoopExit
+                                            endif
+                                    LineMoreVertCrossProdEnd:
+                                endif
+                                
+                                aSimulators![nFastIndex!, SIMWALKDIR!] = (aSimulators![nFastIndex!, SIMWALKDIR!] - aSimulators![nFastIndex!, SIMTURNBLOCK!]) & MAXDIR!
+                                CheckDirStartLoop:
+                                    tFuturePoint_y! = aSimulators![nFastIndex!, CURRENTPOS_Y!] + aDirections_Y[aSimulators![nFastIndex!, SIMWALKDIR!]]
+                                    tFuturePoint_x! = aSimulators![nFastIndex!, CURRENTPOS_X!] + aDirections_X[aSimulators![nFastIndex!, SIMWALKDIR!]]
+                                    if screen_peek!(tFuturePoint_x!, tFuturePoint_y!) <> WALL! then goto CheckDirExitLoop
+                                    aSimulators![nFastIndex!, SIMWALKDIR!] = (aSimulators![nFastIndex!, SIMWALKDIR!] + aSimulators![nFastIndex!, SIMTURNBLOCK!]) & MAXDIR!
+                                goto CheckDirStartLoop
+                                CheckDirExitLoop:
+                                inc nFastIndex!
+                            until nFastIndex! = 2
+                        goto SimulatorLoopStart
+                        SimulatorLoopExit:
+                        nSimulatorNumber! = nFastIndex!
 
-        else
-            if screen_peek!(tFuturePoint_x!, tFuturePoint_y!) = WALL! then
-                on bLineMoreVertical! goto DiagonalHorizontal, DiagonalVertical
-DiagonalHorizontal:
-                    tFuturePoint_y! = tComputer_y!
-                    goto DiagonalEnd
-DiagonalVertical:
-                    tFuturePoint_x! = tComputer_x!
-DiagonalEnd:
-            endif
-            tComputer_y! = tFuturePoint_y!
-            tComputer_x! = tFuturePoint_x!
-        endif
+                        bWllFllwMode! = 1
+                        bPledgeMode! = 1
+                        aSimulators![nSimulatorNumber!, SIMWALKDIR!] = aSimulators![nSimulatorNumber!, SIMSTARTDIR!]
+                    else
+                        if screen_peek!(tFuturePoint_x!, tFuturePoint_y!) = WALL! then
+                            on bLineMoreVertical! goto DiagonalHorizontal, DiagonalVertical
+                                DiagonalHorizontal:
+                                    tFuturePoint_y! = tComputer_y!
+                                    goto DiagonalEnd
+                                DiagonalVertical:
+                                    tFuturePoint_x! = tComputer_x!
+                            DiagonalEnd:
+                        endif
+                        tComputer_y! = tFuturePoint_y!
+                        tComputer_x! = tFuturePoint_x!
+                        goto skipMovement
+                    endif
+            
+            WallFollowTrue:
+            
 
-skipMovement:
-        bMoveNow! = bMoveNow! ^ 1 ' Exclusive OR...
+        skipMovement:
+            bMoveNow! = bMoveNow! ^ 1 ' Exclusive OR...
 goto mainLoop
