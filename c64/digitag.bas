@@ -41,10 +41,11 @@ aSimulators![0, SIMTURNBLOCK!] = 1 ' Clockwise
 aSimulators![1, SIMTURNBLOCK!] = 255 'Anticlockwise - Simulates -1 !
 dim nSimulatorNumber!
 
-bWllFllwMode! = 0
+dim bWllFllwMode! @$3f00 : bWllFllwMode! = 0
+textat 24, 0, @bWllFllwMode! : poke 198, 0 : wait 198,1
 bPledgeMode! = 0
 
-dim nFastIndex! fast
+dim nFastIndex!
 
 poke 53280, 0: poke 53281, 0
 data mazebin![] = incbin "maze.bin"
@@ -52,6 +53,7 @@ memset $d800, 1000, 8
 memcpy @mazebin!, $0400, 1000
 
 mainLoop:
+    textat 25, 0, "#####"
     screenColorArray![(cast(tPlayer_y!) * 40) + tPlayer_x!] = 1
     charat tPlayer_x!, tPlayer_y!, PLAYER_CHAR!
     screenColorArray![(cast(tComputer_y!) * 40) + tComputer_x!] = 13
@@ -89,6 +91,7 @@ mainLoop:
     '--------------------------------------------Computer movement------------------------------------------------------
     on bMoveNow! goto skipMovement, doMovement
         doMovement:
+            textat 24, 0, bWllFllwMode! : poke 198,0 : wait 198,1
             on bWllFllwMode! goto WallFollowFalse, WallFollowTrue
                 WallFollowFalse:
                     tVecComputerPlayer_Xdiff = cast(tPlayer_x!) - tComputer_x!
@@ -219,10 +222,10 @@ mainLoop:
                                 inc nFastIndex!
                             until nFastIndex! = 2
                             textat aSimulators![0, CURRENTPOS_X!], aSimulators![0, CURRENTPOS_Y!], "0"
-                            textat aSimulators![1, CURRENTPOS_X!], aSimulators![0, CURRENTPOS_Y!], "1"
+                            textat aSimulators![1, CURRENTPOS_X!], aSimulators![1, CURRENTPOS_Y!], "1"
                             poke 198,0: wait 198,1
                             textat aSimulators![0, CURRENTPOS_X!], aSimulators![0, CURRENTPOS_Y!], " "
-                            textat aSimulators![1, CURRENTPOS_X!], aSimulators![0, CURRENTPOS_Y!], " "
+                            textat aSimulators![1, CURRENTPOS_X!], aSimulators![1, CURRENTPOS_Y!], " "
                         goto SimulatorLoopStart
                         SimulatorLoopExit:
                         nSimulatorNumber! = nFastIndex!
@@ -258,14 +261,17 @@ mainLoop:
 
                     tComputer_y! = tFuturePoint_y!
                     tComputer_x! = tFuturePoint_x!
-                    
-                    if tWallVectorDir_Y <> 0 and tComputer_y! = tWallPosition_Y! then
-                        bPledgeMode! = 0
-                    else
-                        if tWallVectorDir_X <> 0 and tComputer_x! = tWallPosition_X! then
-                            bPledgeMode! = 0
-                        endif
-                    endif
+                    charat tComputer_x!, tComputer_y!, 33
+                    textat 24, 0, bWllFllwMode! : poke 198,0 : wait 198,1
+                    charat tComputer_x!, tComputer_y!, 32
+
+                    'if tWallVectorDir_Y <> 0 and tComputer_y! = tWallPosition_Y! then
+                    '    bPledgeMode! = 0
+                    'else
+                    '    if tWallVectorDir_X <> 0 and tComputer_x! = tWallPosition_X! then
+                    '        bPledgeMode! = 0
+                    '    endif
+                    'endif
                     
                     tVecWallToSimulator_Ydiff = abs(cast(tPlayer_y!) - aSimulators![nSimulatorNumber!, CURRENTPOS_Y!])
                     tVecWallToSimulator_Xdiff = abs(cast(tPlayer_x!) - aSimulators![nSimulatorNumber!, CURRENTPOS_X!])
@@ -294,8 +300,9 @@ mainLoop:
                         goto WllFllwCheckDirStartLoop
                         WllFllwCheckDirExitLoop:
                     else
-                        textat 25, 0, "###"
+                        textat 25, 0, "no!" : poke 198,0 : wait 198,1
                     endif
         skipMovement:
             bMoveNow! = bMoveNow! ^ 1 ' Exclusive OR...
+        textat 25, 0, "goto" : poke 198,0 : wait 198,1
 goto mainLoop
