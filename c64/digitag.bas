@@ -9,6 +9,11 @@ const EMPTY_CHAR! = 32 ' " "
 
 dim screenColorArray![1000] @$d800
 
+proc trace(linenum)
+    textat 25, 0, "line: " : textat 30, 0, linenum : poke 198,0 : wait 198,1
+    textat 25, 0, "##########"
+endproc
+
 fun screen_peek!(screen_x!, screen_y!)
         dim screenarray![1000] @$0400
         return screenarray![(cast(screen_y!) * 40) + screen_x!]
@@ -41,19 +46,18 @@ aSimulators![0, SIMTURNBLOCK!] = 1 ' Clockwise
 aSimulators![1, SIMTURNBLOCK!] = 255 'Anticlockwise - Simulates -1 !
 dim nSimulatorNumber!
 
-dim bWllFllwMode! @$3f00 : bWllFllwMode! = 0
-textat 24, 0, @bWllFllwMode! : poke 198, 0 : wait 198,1
-bPledgeMode! = 0
-
-dim nFastIndex!
-
 poke 53280, 0: poke 53281, 0
 data mazebin![] = incbin "maze.bin"
 memset $d800, 1000, 8
 memcpy @mazebin!, $0400, 1000
 
+dim bWllFllwMode! @$3f00 : bWllFllwMode! = 0
+'textat 24, 0, @bWllFllwMode! : poke 198, 0 : wait 198,1
+dim bPledgeMode! @$3f01 : bPledgeMode! = 0 '
+dim nFastIndex! @$3f02 : nFastIndex! = 0 '
+
+
 mainLoop:
-    textat 25, 0, "#####"
     screenColorArray![(cast(tPlayer_y!) * 40) + tPlayer_x!] = 1
     charat tPlayer_x!, tPlayer_y!, PLAYER_CHAR!
     screenColorArray![(cast(tComputer_y!) * 40) + tComputer_x!] = 13
@@ -91,7 +95,7 @@ mainLoop:
     '--------------------------------------------Computer movement------------------------------------------------------
     on bMoveNow! goto skipMovement, doMovement
         doMovement:
-            textat 24, 0, bWllFllwMode! : poke 198,0 : wait 198,1
+            'textat 24, 0, bWllFllwMode! : poke 198,0 : wait 198,1
             on bWllFllwMode! goto WallFollowFalse, WallFollowTrue
                 WallFollowFalse:
                     tVecComputerPlayer_Xdiff = cast(tPlayer_x!) - tComputer_x!
@@ -146,6 +150,7 @@ mainLoop:
                             endif
                             inc nFastIndex!
                         until nFastIndex! = 4 'MAXDIR! + 1
+                        trace(153)
 
                         tWallPosition_Y! = tComputer_y! + cast!(tWallVectorDir_Y)
                         tWallPosition_X! = tComputer_x! + cast!(tWallVectorDir_X)
@@ -161,7 +166,7 @@ mainLoop:
                             MoreVertThresholdTrue:
                                 nThresholdCrProd = rshift(tVecComputerPlayer_YdiffABS)
                         MoreVertThresholdEnd:
-
+                        trace(169)
                         'Simulator INIT
                         aSimulators![0, CURRENTPOS_Y!] = tComputer_y!
                         aSimulators![0, CURRENTPOS_X!] = tComputer_x!
@@ -192,8 +197,8 @@ mainLoop:
                                 tVecWallToSimulator_Xdiff = cast(aSimulators![nFastIndex!, CURRENTPOS_X!]) - tWallPosition_X!
                                 
                                 nCrossProduct = abs((tVecWallToSimulator_Xdiff * tVecComputerPlayer_Ydiff) - (tVecWallToSimulator_Ydiff * tVecComputerPlayer_Xdiff))
-                                if nCrossProduct <= nThresholdCrProd then
-                                    on bLineMoreVertical! goto LineMoreVertCrossProdFalse, LineMoreVertCrossProdTrue
+                                trace(200) : if nCrossProduct <= nThresholdCrProd then
+                                    trace(201) : trace(bLineMoreVertical!) : on bLineMoreVertical! goto LineMoreVertCrossProdFalse, LineMoreVertCrossProdTrue
                                         LineMoreVertCrossProdFalse:
                                             if tVecComputerPlayer_Xdiff > 0 then
                                                 if tWallPosition_X! <= aSimulators![nFastIndex!, CURRENTPOS_X!] and aSimulators![nFastIndex!, CURRENTPOS_X!] <= tPlayer_x! then goto SimulatorLoopExit
@@ -209,17 +214,17 @@ mainLoop:
                                             endif
                                     LineMoreVertCrossProdEnd:
                                 endif
-                                
-                                aSimulators![nFastIndex!, SIMWALKDIR!] = (aSimulators![nFastIndex!, SIMWALKDIR!] - aSimulators![nFastIndex!, SIMTURNBLOCK!]) & MAXDIR!
+                                trace(217) : trace(nFastIndex!)
+                                aSimulators![nFastIndex!, SIMWALKDIR!] = (aSimulators![nFastIndex!, SIMWALKDIR!] - aSimulators![nFastIndex!, SIMTURNBLOCK!]) & MAXDIR! : trace(218) : trace(nFastIndex!)
                                 CheckDirStartLoop:
-                                    tFuturePoint_y! = aSimulators![nFastIndex!, CURRENTPOS_Y!] + aDirections_Y![aSimulators![nFastIndex!, SIMWALKDIR!]]
+                                    trace(220) : trace(nFastIndex!) : tFuturePoint_y! = aSimulators![nFastIndex!, CURRENTPOS_Y!] + aDirections_Y![aSimulators![nFastIndex!, SIMWALKDIR!]]
                                     tFuturePoint_x! = aSimulators![nFastIndex!, CURRENTPOS_X!] + aDirections_X![aSimulators![nFastIndex!, SIMWALKDIR!]]
                                     if screen_peek!(tFuturePoint_x!, tFuturePoint_y!) <> WALL! then goto CheckDirExitLoop
                                     aSimulators![nFastIndex!, SIMWALKDIR!] = (aSimulators![nFastIndex!, SIMWALKDIR!] + aSimulators![nFastIndex!, SIMTURNBLOCK!]) & MAXDIR!
                                 goto CheckDirStartLoop
                                 CheckDirExitLoop:                                
 
-                                inc nFastIndex!
+                                trace(227) : trace(nFastIndex!) : inc nFastIndex! : trace(nFastIndex!)
                             until nFastIndex! = 2
                             textat aSimulators![0, CURRENTPOS_X!], aSimulators![0, CURRENTPOS_Y!], "0"
                             textat aSimulators![1, CURRENTPOS_X!], aSimulators![1, CURRENTPOS_Y!], "1"
@@ -228,12 +233,11 @@ mainLoop:
                             textat aSimulators![1, CURRENTPOS_X!], aSimulators![1, CURRENTPOS_Y!], " "
                         goto SimulatorLoopStart
                         SimulatorLoopExit:
-                        nSimulatorNumber! = nFastIndex!
+                        trace(236) : nSimulatorNumber! = nFastIndex!
 
                         bWllFllwMode! = 1
                         bPledgeMode! = 1
                         aSimulators![nSimulatorNumber!, SIMWALKDIR!] = aSimulators![nSimulatorNumber!, SIMSTARTDIR!]
-                        textat 25, 0, "wf" : poke 198,0 : wait 198,1
                     else
                         if screen_peek!(tFuturePoint_x!, tFuturePoint_y!) = WALL! then
                             on bLineMoreVertical! goto DiagonalHorizontal, DiagonalVertical
@@ -250,7 +254,7 @@ mainLoop:
                     endif
             
                 WallFollowTrue:
-                    textat 25, 0, "wf!" : poke 198,0 : wait 198,1
+                    trace(256)
                     WllFllwCheckWallStartLoop:
                         tFuturePoint_y! = tComputer_y! + aDirections_Y![aSimulators![nSimulatorNumber!, SIMWALKDIR!]]
                         tFuturePoint_x! = tComputer_x! + aDirections_X![aSimulators![nSimulatorNumber!, SIMWALKDIR!]]
@@ -264,7 +268,7 @@ mainLoop:
                     charat tComputer_x!, tComputer_y!, 33
                     textat 24, 0, bWllFllwMode! : poke 198,0 : wait 198,1
                     charat tComputer_x!, tComputer_y!, 32
-
+                    trace(270)
                     'if tWallVectorDir_Y <> 0 and tComputer_y! = tWallPosition_Y! then
                     '    bPledgeMode! = 0
                     'else
@@ -273,16 +277,19 @@ mainLoop:
                     '    endif
                     'endif
                     
-                    tVecWallToSimulator_Ydiff = abs(cast(tPlayer_y!) - aSimulators![nSimulatorNumber!, CURRENTPOS_Y!])
+                    trace(279) : tVecWallToSimulator_Ydiff = abs(cast(tPlayer_y!) - aSimulators![nSimulatorNumber!, CURRENTPOS_Y!])
                     tVecWallToSimulator_Xdiff = abs(cast(tPlayer_x!) - aSimulators![nSimulatorNumber!, CURRENTPOS_X!])
                     tVecComputerPlayer_Ydiff = abs(cast(tPlayer_y!) - tComputer_y!)
                     tVecComputerPlayer_Xdiff = abs(cast(tPlayer_x!) - tComputer_x!)
-                    
+                    trace(283) : trace(bPledgeMode!)
+
                     on bPledgeMode! goto PledgeModeOff, PledgeModeOn
                         PledgeModeOff:
+                            trace(287)
                             if tVecComputerPlayer_Ydiff + tVecComputerPlayer_Xdiff <= tVecWallToSimulator_Ydiff + tVecWallToSimulator_Xdiff Then bWllFllwMode! = 0
                             goto PledgeModeEnd
                         PledgeModeOn:
+                            trace(291)
                             'if tVecComputerPlayer_Ydiff <= tVecWallToSimulator_Ydiff And tVecComputerPlayer_Xdiff <= tVecWallToSimulator_Xdiff Then bWllFllwMode! = 0
                             if tVecComputerPlayer_Ydiff <= tVecWallToSimulator_Ydiff then
                                 if tVecComputerPlayer_Xdiff <= tVecWallToSimulator_Xdiff then
@@ -290,7 +297,9 @@ mainLoop:
                                 endif
                             endif
                     PledgeModeEnd:
+                    trace(299)
                     if bWllFllwMode! = 1 then
+                        trace(301)
                         aSimulators![nSimulatorNumber!, SIMWALKDIR!] = (aSimulators![nSimulatorNumber!, SIMWALKDIR!] - aSimulators![nSimulatorNumber!, SIMTURNBLOCK!]) & MAXDIR!
                         WllFllwCheckDirStartLoop:
                             tFuturePoint_y! = tComputer_y! + aDirections_Y![aSimulators![nSimulatorNumber!, SIMWALKDIR!]]
@@ -299,10 +308,11 @@ mainLoop:
                             aSimulators![nSimulatorNumber!, SIMWALKDIR!] = (aSimulators![nSimulatorNumber!, SIMWALKDIR!] + aSimulators![nSimulatorNumber!, SIMTURNBLOCK!]) & MAXDIR!
                         goto WllFllwCheckDirStartLoop
                         WllFllwCheckDirExitLoop:
+                        trace(310)
                     else
-                        textat 25, 0, "no!" : poke 198,0 : wait 198,1
+                        trace(312)
                     endif
         skipMovement:
             bMoveNow! = bMoveNow! ^ 1 ' Exclusive OR...
-        textat 25, 0, "goto" : poke 198,0 : wait 198,1
+        'trace(316)
 goto mainLoop
