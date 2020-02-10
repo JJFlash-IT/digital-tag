@@ -44,7 +44,6 @@ Const CURRENTPOS_Y! = 0 : Const CURRENTPOS_X! = 1 : Const SIMWALKDIR! = 2 : Cons
 dim aSimulators![2, 6]
 aSimulators![0, SIMTURNBLOCK!] = 1 ' Clockwise
 aSimulators![1, SIMTURNBLOCK!] = 255 'Anticlockwise - Simulates -1 !
-dim nSimulatorNumber!
 
 poke 53280, 0: poke 53281, 0
 data mazebin![] = incbin "maze.bin"
@@ -52,9 +51,10 @@ memset $d800, 1000, 8
 memcpy @mazebin!, $0400, 1000
 
 dim bWllFllwMode! @$3f00 : bWllFllwMode! = 0
-'textat 24, 0, @bWllFllwMode! : poke 198, 0 : wait 198,1
 dim bPledgeMode! @$3f01 : bPledgeMode! = 0 '
 dim nFastIndex! @$3f02 : nFastIndex! = 0 '
+dim nSimulatorNumber! @$3f03 : nSimulatorNumber! = 0 '
+
 
 
 mainLoop:
