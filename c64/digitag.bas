@@ -9,11 +9,6 @@ const EMPTY_CHAR! = 32 ' " "
 
 dim screenColorArray![1000] @$d800
 
-proc trace(linenum)
-    textat 25, 0, "line: " : textat 30, 0, linenum : poke 198,0 : wait 198,1
-    textat 25, 0, "##########"
-endproc
-
 fun screen_peek!(screen_x!, screen_y!)
         dim screenarray![1000] @$0400
         return screenarray![(cast(screen_y!) * 40) + screen_x!]
@@ -22,23 +17,28 @@ endfun
 tPlayer_x! = 1 : tPlayer_y! = 1
 tComputer_x! = 38 : tComputer_y! = 23
 
-dim tFuturePoint_x! : dim tFuturePoint_y!
+tFuturePoint_x! = 0: tFuturePoint_y! = 0
 bMoveNow! = 0
 
-dim tVecComputerPlayer_Xdiff : dim tVecComputerPlayer_Ydiff : dim tVecComputerPlayer_XdiffABS : dim tVecComputerPlayer_YdiffABS
-dim tVecWallToSimulator_Xdiff : dim tVecWallToSimulator_Ydiff
-dim tVectorDir_X : dim tVectorDir_Y
-dim tWallVectorDir_X : dim tWallVectorDir_Y
+tVecComputerPlayer_Xdiff = 0 : tVecComputerPlayer_Ydiff = 0 : tVecComputerPlayer_XdiffABS = 0 : tVecComputerPlayer_YdiffABS = 0
+tVecWallToSimulator_Xdiff = 0 : tVecWallToSimulator_Ydiff = 0
+tVectorDir_X = 0 : tVectorDir_Y = 0
+tWallVectorDir_X = 0 : tWallVectorDir_Y = 0
 tWallPosition_Y! = 0
 tWallPosition_X! = 0
-dim nBresenhamDiff : dim nCrossProduct : dim nThresholdCrProd
+nBresenhamDiff = 0 : nCrossProduct = 0 : nThresholdCrProd = 0
 bLineMoreVertical! = 0
 
 const MAXDIR! = 3
-dim nDirectionScalar!
+nDirectionScalar! = 0
 '255 equivalent to -1!
 data aDirections_Y![] = 255, 0, 1, 0 ' north, east, south, west
 data aDirections_X![] = 0, 1, 0, 255 ' north, east, south, west
+
+bWllFllwMode! = 0
+bPledgeMode! = 0
+nFastIndex! = 0
+nSimulatorNumber! = 0
 
 Const CURRENTPOS_Y! = 0 : Const CURRENTPOS_X! = 1 : Const SIMWALKDIR! = 2 : Const SIMSTARTDIR! = 3 : Const SIMBLOCKDIR! = 4 : Const SIMTURNBLOCK! = 5
 dim aSimulators![2, 6]
@@ -49,13 +49,6 @@ poke 53280, 0: poke 53281, 0
 data mazebin![] = incbin "maze.bin"
 memset $d800, 1000, 8
 memcpy @mazebin!, $0400, 1000
-
-dim bWllFllwMode! @$3f00 : bWllFllwMode! = 0
-dim bPledgeMode! @$3f01 : bPledgeMode! = 0 '
-dim nFastIndex! @$3f02 : nFastIndex! = 0 '
-dim nSimulatorNumber! @$3f03 : nSimulatorNumber! = 0 '
-
-
 
 mainLoop:
     screenColorArray![(cast(tPlayer_y!) * 40) + tPlayer_x!] = 1
@@ -78,7 +71,7 @@ mainLoop:
     watch RASTER_LINE, 250
     watch RASTER_LINE, 250
     watch RASTER_LINE, 250
-    if bMoveNow! = 1 then poke 198, 0 : wait 198,1
+    'if bMoveNow! = 1 then poke 198, 0 : wait 198,1
     charat tPlayer_x!, tPlayer_y!, EMPTY_CHAR!
     charat tComputer_x!, tComputer_y!, EMPTY_CHAR!
 
@@ -224,20 +217,18 @@ mainLoop:
 
                                 inc nFastIndex!
                             until nFastIndex! = 2
-                            textat aSimulators![0, CURRENTPOS_X!], aSimulators![0, CURRENTPOS_Y!], "0"
-                            textat aSimulators![1, CURRENTPOS_X!], aSimulators![1, CURRENTPOS_Y!], "1"
-                            poke 198,0: wait 198,1
-                            textat aSimulators![0, CURRENTPOS_X!], aSimulators![0, CURRENTPOS_Y!], " "
-                            textat aSimulators![1, CURRENTPOS_X!], aSimulators![1, CURRENTPOS_Y!], " "
+                            'textat aSimulators![0, CURRENTPOS_X!], aSimulators![0, CURRENTPOS_Y!], "0"
+                            'textat aSimulators![1, CURRENTPOS_X!], aSimulators![1, CURRENTPOS_Y!], "1"
+                            'poke 198,0: wait 198,1
+                            'textat aSimulators![0, CURRENTPOS_X!], aSimulators![0, CURRENTPOS_Y!], " "
+                            'textat aSimulators![1, CURRENTPOS_X!], aSimulators![1, CURRENTPOS_Y!], " "
                         goto SimulatorLoopStart
                         SimulatorLoopExit:
-                        trace(234) : trace(nFastIndex!) : nSimulatorNumber! = nFastIndex! : trace(nSimulatorNumber!) : trace(aSimulators![nSimulatorNumber!, SIMWALKDIR!])
+                        nSimulatorNumber! = nFastIndex!
 
                         bWllFllwMode! = 1
                         bPledgeMode! = 1
-                        trace(238) : trace(nSimulatorNumber!) : trace(aSimulators![nSimulatorNumber!, SIMWALKDIR!]) : trace(aSimulators![nSimulatorNumber!, SIMSTARTDIR!])
-                            aSimulators![nSimulatorNumber!, SIMWALKDIR!] = aSimulators![nSimulatorNumber!, SIMSTARTDIR!]
-                        trace(240) : trace(nSimulatorNumber!) : trace(aSimulators![nSimulatorNumber!, SIMWALKDIR!])
+                        aSimulators![nSimulatorNumber!, SIMWALKDIR!] = aSimulators![nSimulatorNumber!, SIMSTARTDIR!]
                     else
                         if screen_peek!(tFuturePoint_x!, tFuturePoint_y!) = WALL! then
                             on bLineMoreVertical! goto DiagonalHorizontal, DiagonalVertical
@@ -258,16 +249,12 @@ mainLoop:
                         tFuturePoint_y! = tComputer_y! + aDirections_Y![aSimulators![nSimulatorNumber!, SIMWALKDIR!]]
                         tFuturePoint_x! = tComputer_x! + aDirections_X![aSimulators![nSimulatorNumber!, SIMWALKDIR!]]
                         if screen_peek!(tFuturePoint_x!, tFuturePoint_y!) <> WALL! Then Goto WllFllwCheckWallExitLoop
-                        trace(261) : trace(nSimulatorNumber!) : trace(aSimulators![nSimulatorNumber!, SIMTURNBLOCK!])
                         aSimulators![nSimulatorNumber!, SIMWALKDIR!] = (aSimulators![nSimulatorNumber!, SIMWALKDIR!] + aSimulators![nSimulatorNumber!, SIMTURNBLOCK!]) & MAXDIR!
                     goto WllFllwCheckWallStartLoop
                     WllFllwCheckWallExitLoop:
 
                     tComputer_y! = tFuturePoint_y!
                     tComputer_x! = tFuturePoint_x!
-                    'charat tComputer_x!, tComputer_y!, 33
-                    'textat 24, 0, bWllFllwMode! : poke 198,0 : wait 198,1
-                    'charat tComputer_x!, tComputer_y!, 32
 
                     'if tWallVectorDir_Y <> 0 and tComputer_y! = tWallPosition_Y! then
                     '    bPledgeMode! = 0
