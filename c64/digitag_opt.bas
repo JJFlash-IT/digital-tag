@@ -7,42 +7,36 @@ const PLAYER_CHAR! = 42 ' "*"
 const COMPUTER_CHAR! = 0 ' "@"
 const EMPTY_CHAR! = 32 ' " "
 
+dim screenarray![1000] @$0400
 dim screenColorArray![1000] @$d800
 
 fun screen_peek!(screen_x!, screen_y!)
-        dim screenarray![1000] @$0400
-        return screenarray![(cast(screen_y!) * 40) + screen_x!]
+        return \screenarray![(cast(screen_y!) * 40) + screen_x!]
 endfun
 
 tPlayer_x! = 1 : tPlayer_y! = 1
 tComputer_x! = 38 : tComputer_y! = 23
 
-tFuturePoint_x! = 0: tFuturePoint_y! = 0
+Dim tFuturePoint_x! fast : Dim tFuturePoint_y! fast : tFuturePoint_x! = 0: tFuturePoint_y! = 0
 bMoveNow! = 0
 
 tVecComputerPlayer_Xdiff = 0 : tVecComputerPlayer_Ydiff = 0 : tVecComputerPlayer_XdiffABS = 0 : tVecComputerPlayer_YdiffABS = 0
-tVecWallToSimulator_Xdiff = 0 : tVecWallToSimulator_Ydiff = 0
+tVecSimulToPlayer_Xdiff = 0 : tVecSimulToPlayer_Ydiff = 0
 tVectorDir_X = 0 : tVectorDir_Y = 0
 tWallVectorDir_X = 0 : tWallVectorDir_Y = 0
 tWallPosition_Y! = 0
 tWallPosition_X! = 0
-nBresenhamDiff = 0 : nCrossProduct = 0 : nThresholdCrProd = 0
+nBresenhamDiff = 0
 bLineMoreVertical! = 0
 
 const MAXDIR! = 3
 nDirectionScalar! = 0
-'255 equivalent to -1!
-data aDirections_Y![] = 255, 0, 1, 0 ' north, east, south, west
-data aDirections_X![] = 0, 1, 0, 255 ' north, east, south, west
 
 bWllFllwMode! = 0
 bPledgeMode! = 0
-nSimulatorNumber! = 0
+dim nSimulatorNumber! fast : nSimulatorNumber! = 0
 
-Const CURRENTPOS_Y! = 0 : Const CURRENTPOS_X! = 1 : Const SIMWALKDIR! = 2 : Const SIMSTARTDIR! = 3 : Const SIMBLOCKDIR! = 4 : Const SIMTURNBLOCK! = 5
-dim aSimulators![2, 6]
-aSimulators![0, SIMTURNBLOCK!] = 1 ' Clockwise
-aSimulators![1, SIMTURNBLOCK!] = 255 'Anticlockwise - Simulates -1 !
+dim aSimulators_Y![2]: dim aSimulators_X![2]: dim aSimulators_WalkDir![2]: dim aSimulators_StartWalkDir![2]
 
 dim bresenhamMap![1000]
 proc plotLineLow(x0,y0, x1,y1)
@@ -110,7 +104,7 @@ proc plotLine(x0,y0, x1,y1)
 endproc
 
 poke 53280, 0: poke 53281, 0
-data mazebin![] = incbin "testmap.bin"
+data mazebin![] = incbin "maze.bin"
 memset $d800, 1000, 8
 memcpy @mazebin!, $0400, 1000
 
@@ -220,33 +214,60 @@ mainLoop:
                         call plotLine(tWallPosition_X!,tWallPosition_Y!, tPlayer_x!, tPlayer_y!)
 
                         'Simulator INIT
-                        aSimulators![0, CURRENTPOS_Y!] = tComputer_y!
-                        aSimulators![0, CURRENTPOS_X!] = tComputer_x!
-                        aSimulators![0, SIMWALKDIR!] = (nDirectionScalar! + 1) & MAXDIR!
-                        aSimulators![0, SIMSTARTDIR!] = aSimulators![0, SIMWALKDIR!]
+                        aSimulators_Y![0] = tComputer_y!
+                        aSimulators_X![0] = tComputer_x!
+                        aSimulators_WalkDir![0] = (nDirectionScalar! + 1) & MAXDIR!
+                        aSimulators_StartWalkDir![0] = aSimulators_WalkDir![0]
 
-                        aSimulators![1, CURRENTPOS_Y!] = tComputer_y!
-                        aSimulators![1, CURRENTPOS_X!] = tComputer_x!
-                        aSimulators![1, SIMWALKDIR!] = (nDirectionScalar! - 1) & MAXDIR!
-                        aSimulators![1, SIMSTARTDIR!] = aSimulators![1, SIMWALKDIR!]
+                        aSimulators_Y![1] = tComputer_y!
+                        aSimulators_X![1] = tComputer_x!
+                        aSimulators_WalkDir![1] = (nDirectionScalar! - 1) & MAXDIR!
+                        aSimulators_StartWalkDir![1] = aSimulators_WalkDir![1]
 
                         'Simulator LAUNCH
                         nSimulatorNumber! = 0
                         SimulatorLoopStart:
                             CheckWallStartLoop:
-                                tFuturePoint_y! = aSimulators![nSimulatorNumber!, CURRENTPOS_Y!] + aDirections_Y![aSimulators![nSimulatorNumber!, SIMWALKDIR!]]
-                                tFuturePoint_x! = aSimulators![nSimulatorNumber!, CURRENTPOS_X!] + aDirections_X![aSimulators![nSimulatorNumber!, SIMWALKDIR!]]
-                                if screen_peek!(tFuturePoint_x!, tFuturePoint_y!) <> WALL! Then Goto CheckWallExitLoop
-                                aSimulators![nSimulatorNumber!, SIMWALKDIR!] = (aSimulators![nSimulatorNumber!, SIMWALKDIR!] + aSimulators![nSimulatorNumber!, SIMTURNBLOCK!]) & MAXDIR!
+                                tFuturePoint_y! = aSimulators_Y![nSimulatorNumber!]
+                                tFuturePoint_x! = aSimulators_X![nSimulatorNumber!]
+                                on aSimulators_WalkDir![nSimulatorNumber!] goto SimulDirNorth, SimulDirEast, SimulDirSouth, SimulDirWest
+                                    SimulDirNorth:
+                                        dec tFuturePoint_y!
+                                        goto SimulDirExit
+                                    SimulDirEast:
+                                        inc tFuturePoint_x!
+                                        goto SimulDirExit
+                                    SimulDirSouth:
+                                        inc tFuturePoint_y!
+                                        goto SimulDirExit
+                                    SimulDirWest:
+                                        dec tFuturePoint_x!
+                                SimulDirExit:
+                                if screenarray![(cast(tFuturePoint_y!) * 40) + tFuturePoint_x!] <> WALL! Then Goto CheckWallExitLoop
+                                on nSimulatorNumber! goto WalkDirIncrease, WalkDirDecrease
+                                    WalkDirIncrease:
+                                        inc aSimulators_WalkDir![nSimulatorNumber!]
+                                        goto WalkDirEndOnGoTo
+                                    WalkDirDecrease:
+                                        dec aSimulators_WalkDir![nSimulatorNumber!]
+                                WalkDirEndOnGoTo:
+                                aSimulators_WalkDir![nSimulatorNumber!] = aSimulators_WalkDir![nSimulatorNumber!] & MAXDIR!
                                 goto CheckWallStartLoop
                             CheckWallExitLoop:
 
-                            aSimulators![nSimulatorNumber!, CURRENTPOS_Y!] = tFuturePoint_y!
-                            aSimulators![nSimulatorNumber!, CURRENTPOS_X!] = tFuturePoint_x!
+                            aSimulators_Y![nSimulatorNumber!] = tFuturePoint_y!
+                            aSimulators_X![nSimulatorNumber!] = tFuturePoint_x!
                                 
                             if bresenhamMap![(cast(tFuturePoint_y!) * 40) + tFuturePoint_x!] = 1 then goto SimulatorLoopExit
 
-                            aSimulators![nSimulatorNumber!, SIMWALKDIR!] = (aSimulators![nSimulatorNumber!, SIMWALKDIR!] - aSimulators![nSimulatorNumber!, SIMTURNBLOCK!]) & MAXDIR!
+                            on nSimulatorNumber! goto WalkDirDecrAgainstWall, WalkDirIncrAgainstWall
+                                WalkDirDecrAgainstWall:
+                                    dec aSimulators_WalkDir![nSimulatorNumber!]
+                                    goto WalkDirAgainstWallEnd
+                                WalkDirIncrAgainstWall:
+                                    inc aSimulators_WalkDir![nSimulatorNumber!]
+                            WalkDirAgainstWallEnd:
+                            aSimulators_WalkDir![nSimulatorNumber!] = aSimulators_WalkDir![nSimulatorNumber!] & MAXDIR!
 
                             nSimulatorNumber! = nSimulatorNumber! ^ 1 'Alternates 1, 0, 1, 0, ...
                             'textat aSimulators![0, CURRENTPOS_X!], aSimulators![0, CURRENTPOS_Y!], "0"
@@ -259,7 +280,8 @@ mainLoop:
 
                         bWllFllwMode! = 1
                         bPledgeMode! = 1
-                        aSimulators![nSimulatorNumber!, SIMWALKDIR!] = aSimulators![nSimulatorNumber!, SIMSTARTDIR!]
+                        nDirectionScalar! = aSimulators_StartWalkDir![nSimulatorNumber!] ' ReUse!
+                        textat aSimulators_X![nSimulatorNumber!], aSimulators_Y![nSimulatorNumber!], "s"
                     else
                         if screen_peek!(tFuturePoint_x!, tFuturePoint_y!) = WALL! then
                             on bLineMoreVertical! goto DiagonalHorizontal, DiagonalVertical
@@ -276,11 +298,32 @@ mainLoop:
                     endif
             
                 WallFollowTrue:
+                    textat aSimulators_X![nSimulatorNumber!], aSimulators_Y![nSimulatorNumber!], "s"
                     WllFllwCheckWallStartLoop:
-                        tFuturePoint_y! = tComputer_y! + aDirections_Y![aSimulators![nSimulatorNumber!, SIMWALKDIR!]]
-                        tFuturePoint_x! = tComputer_x! + aDirections_X![aSimulators![nSimulatorNumber!, SIMWALKDIR!]]
+                        tFuturePoint_y! = tComputer_y!
+                        tFuturePoint_x! = tComputer_x!
+                        on nDirectionScalar! goto ComputerNorth, ComputerEast, ComputerSouth, ComputerWest
+                            ComputerNorth:
+                                dec tFuturePoint_y!
+                                goto ComputerDirEnd
+                            ComputerEast:
+                                inc tFuturePoint_x!
+                                goto ComputerDirEnd
+                            ComputerSouth:
+                                inc tFuturePoint_y!
+                                goto ComputerDirEnd
+                            ComputerWest:
+                                dec tFuturePoint_x!
+                        ComputerDirEnd:
                         if screen_peek!(tFuturePoint_x!, tFuturePoint_y!) <> WALL! Then Goto WllFllwCheckWallExitLoop
-                        aSimulators![nSimulatorNumber!, SIMWALKDIR!] = (aSimulators![nSimulatorNumber!, SIMWALKDIR!] + aSimulators![nSimulatorNumber!, SIMTURNBLOCK!]) & MAXDIR!
+                        on nSimulatorNumber! goto ComputerIncrease, ComputerDecrease
+                            ComputerIncrease:
+                                inc nDirectionScalar!
+                                goto ComputerDirEndOnGoTo
+                            ComputerDecrease:
+                                dec nDirectionScalar!
+                        ComputerDirEndOnGoTo:
+                        nDirectionScalar! = nDirectionScalar! & MAXDIR!
                     goto WllFllwCheckWallStartLoop
                     WllFllwCheckWallExitLoop:
 
@@ -297,27 +340,38 @@ mainLoop:
                             endif
                         endif
                     skipPledge:
-                    
-                    tVecWallToSimulator_Ydiff = abs(cast(tPlayer_y!) - aSimulators![nSimulatorNumber!, CURRENTPOS_Y!])
-                    tVecWallToSimulator_Xdiff = abs(cast(tPlayer_x!) - aSimulators![nSimulatorNumber!, CURRENTPOS_X!])
+
+                    tVecSimulToPlayer_Ydiff = abs(cast(tPlayer_y!) - aSimulators_Y![nSimulatorNumber!])
+                    tVecSimulToPlayer_Xdiff = abs(cast(tPlayer_x!) - aSimulators_X![nSimulatorNumber!])
                     tVecComputerPlayer_Ydiff = abs(cast(tPlayer_y!) - tComputer_y!)
                     tVecComputerPlayer_Xdiff = abs(cast(tPlayer_x!) - tComputer_x!)
 
                     on bPledgeMode! goto PledgeModeOff, PledgeModeOn
                         PledgeModeOff:
-                            if tVecComputerPlayer_Ydiff + tVecComputerPlayer_Xdiff <= tVecWallToSimulator_Ydiff + tVecWallToSimulator_Xdiff Then bWllFllwMode! = 0
+                            poke 53280, 12
+                            if tVecComputerPlayer_Ydiff + tVecComputerPlayer_Xdiff <= tVecSimulToPlayer_Ydiff + tVecSimulToPlayer_Xdiff Then bWllFllwMode! = 0
                             goto PledgeModeEnd
                         PledgeModeOn:
-                            'if tVecComputerPlayer_Ydiff <= tVecWallToSimulator_Ydiff And tVecComputerPlayer_Xdiff <= tVecWallToSimulator_Xdiff Then bWllFllwMode! = 0
-                            if tVecComputerPlayer_Ydiff <= tVecWallToSimulator_Ydiff then
-                                if tVecComputerPlayer_Xdiff <= tVecWallToSimulator_Xdiff then
+                            'if tVecComputerPlayer_Ydiff <= tVecSimulToPlayer_Ydiff And tVecComputerPlayer_Xdiff <= tVecSimulToPlayer_Xdiff Then bWllFllwMode! = 0
+                            if tVecComputerPlayer_Ydiff <= tVecSimulToPlayer_Ydiff then
+                                if tVecComputerPlayer_Xdiff <= tVecSimulToPlayer_Xdiff then
                                     bWllFllwMode! = 0
                                 endif
                             endif
                     PledgeModeEnd:
 
                     if bWllFllwMode! = 1 then
-                        aSimulators![nSimulatorNumber!, SIMWALKDIR!] = (aSimulators![nSimulatorNumber!, SIMWALKDIR!] - aSimulators![nSimulatorNumber!, SIMTURNBLOCK!]) & MAXDIR!
+                        on nSimulatorNumber! goto ComputerDecrAgainstWall, ComputerIncrAgainstWall
+                            ComputerDecrAgainstWall:
+                                dec nDirectionScalar!
+                                goto ComputerAgainstWallEnd
+                            ComputerIncrAgainstWall:
+                                inc nDirectionScalar!
+                        ComputerAgainstWallEnd:
+                        nDirectionScalar! = nDirectionScalar! & MAXDIR!
+                    else
+                        textat aSimulators_X![nSimulatorNumber!], aSimulators_Y![nSimulatorNumber!], " "
+                        poke 53280, 0
                     endif
         skipMovement:
             bMoveNow! = bMoveNow! ^ 1 ' Exclusive OR...
