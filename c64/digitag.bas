@@ -1,5 +1,7 @@
 include "..\extensions\xcb-ext-joystick\xcb-ext-joystick.bas"
 
+data mazebin![] = incbin "testmap.bin"
+
 const RASTER_LINE = $d012
 
 const WALL! = 35 ' "#"
@@ -104,7 +106,6 @@ proc plotLine(x0,y0, x1,y1)
 endproc
 
 poke 53280, 0: poke 53281, 0
-data mazebin![] = incbin "maze.bin"
 memset $d800, 1000, 8
 memcpy @mazebin!, $0400, 1000
 
@@ -130,7 +131,7 @@ mainLoop:
     watch RASTER_LINE, 250
     watch RASTER_LINE, 250
 
-    watch RASTER_LINE, 250
+   'watch RASTER_LINE, 250
     'if bMoveNow! = 1 then poke 198, 0 : wait 198,1
     charat tPlayer_x!, tPlayer_y!, EMPTY_CHAR!
     charat tComputer_x!, tComputer_y!, EMPTY_CHAR!
@@ -281,7 +282,6 @@ mainLoop:
                         bWllFllwMode! = 1
                         bPledgeMode! = 1
                         nDirectionScalar! = aSimulators_StartWalkDir![nSimulatorNumber!] ' ReUse!
-                        textat aSimulators_X![nSimulatorNumber!], aSimulators_Y![nSimulatorNumber!], "s"
                     else
                         if screen_peek!(tFuturePoint_x!, tFuturePoint_y!) = WALL! then
                             on bLineMoreVertical! goto DiagonalHorizontal, DiagonalVertical
@@ -298,7 +298,7 @@ mainLoop:
                     endif
             
                 WallFollowTrue:
-                    textat aSimulators_X![nSimulatorNumber!], aSimulators_Y![nSimulatorNumber!], "s"
+                    'textat aSimulators_X![nSimulatorNumber!], aSimulators_Y![nSimulatorNumber!], "s"
                     WllFllwCheckWallStartLoop:
                         tFuturePoint_y! = tComputer_y!
                         tFuturePoint_x! = tComputer_x!
@@ -348,7 +348,7 @@ mainLoop:
 
                     on bPledgeMode! goto PledgeModeOff, PledgeModeOn
                         PledgeModeOff:
-                            poke 53280, 12
+                            'poke 53280, 12
                             if tVecComputerPlayer_Ydiff + tVecComputerPlayer_Xdiff <= tVecSimulToPlayer_Ydiff + tVecSimulToPlayer_Xdiff Then bWllFllwMode! = 0
                             goto PledgeModeEnd
                         PledgeModeOn:
@@ -369,9 +369,9 @@ mainLoop:
                                 inc nDirectionScalar!
                         ComputerAgainstWallEnd:
                         nDirectionScalar! = nDirectionScalar! & MAXDIR!
-                    else
-                        textat aSimulators_X![nSimulatorNumber!], aSimulators_Y![nSimulatorNumber!], " "
-                        poke 53280, 0
+                    'else
+                    '    textat aSimulators_X![nSimulatorNumber!], aSimulators_Y![nSimulatorNumber!], " "
+                    '    poke 53280, 0
                     endif
         skipMovement:
             bMoveNow! = bMoveNow! ^ 1 ' Exclusive OR...
