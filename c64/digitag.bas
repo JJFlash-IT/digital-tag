@@ -1,8 +1,8 @@
 include "..\extensions\xcb-ext-joystick\xcb-ext-joystick.bas"
 
-data mazebin![] = incbin "testmap.bin"
+data mazebin![] = incbin "maze.bin"
 
-const RASTER_LINE = $d012
+const RASTER_LINE = $d011 ' $d012
 
 const WALL! = 35 ' "#"
 const PLAYER_CHAR! = 42 ' "*"
@@ -110,29 +110,13 @@ memset $d800, 1000, 8
 memcpy @mazebin!, $0400, 1000
 
 mainLoop:
-    screenColorArray![(cast(tPlayer_y!) * 40) + tPlayer_x!] = 1
+    screenColorArray![(cast(tPlayer_y!) * 40) + tPlayer_x!] = 1 'white
     charat tPlayer_x!, tPlayer_y!, PLAYER_CHAR!
-    screenColorArray![(cast(tComputer_y!) * 40) + tComputer_x!] = 13
+    screenColorArray![(cast(tComputer_y!) * 40) + tComputer_x!] = 13 'cyan
     charat tComputer_x!, tComputer_y!, COMPUTER_CHAR!
-    watch RASTER_LINE, 250
-    watch RASTER_LINE, 250
-    watch RASTER_LINE, 250
-    watch RASTER_LINE, 250
-    watch RASTER_LINE, 250
-    watch RASTER_LINE, 250
-    watch RASTER_LINE, 250
-    watch RASTER_LINE, 250
-    watch RASTER_LINE, 250
-    watch RASTER_LINE, 250
-    watch RASTER_LINE, 250
-    watch RASTER_LINE, 250
-    watch RASTER_LINE, 250
-    watch RASTER_LINE, 250
-    watch RASTER_LINE, 250
-    watch RASTER_LINE, 250
+    wait RASTER_LINE, 128 : wait RASTER_LINE, 128, 128
+    wait RASTER_LINE, 128
 
-   'watch RASTER_LINE, 250
-    'if bMoveNow! = 1 then poke 198, 0 : wait 198,1
     charat tPlayer_x!, tPlayer_y!, EMPTY_CHAR!
     charat tComputer_x!, tComputer_y!, EMPTY_CHAR!
 
@@ -271,11 +255,7 @@ mainLoop:
                             aSimulators_WalkDir![nSimulatorNumber!] = aSimulators_WalkDir![nSimulatorNumber!] & MAXDIR!
 
                             nSimulatorNumber! = nSimulatorNumber! ^ 1 'Alternates 1, 0, 1, 0, ...
-                            'textat aSimulators![0, CURRENTPOS_X!], aSimulators![0, CURRENTPOS_Y!], "0"
-                            'textat aSimulators![1, CURRENTPOS_X!], aSimulators![1, CURRENTPOS_Y!], "1"
-                            'poke 198,0: wait 198,1
-                            'textat aSimulators![0, CURRENTPOS_X!], aSimulators![0, CURRENTPOS_Y!], " "
-                            'textat aSimulators![1, CURRENTPOS_X!], aSimulators![1, CURRENTPOS_Y!], " "
+
                             goto SimulatorLoopStart
                         SimulatorLoopExit:
 
@@ -298,7 +278,6 @@ mainLoop:
                     endif
             
                 WallFollowTrue:
-                    'textat aSimulators_X![nSimulatorNumber!], aSimulators_Y![nSimulatorNumber!], "s"
                     WllFllwCheckWallStartLoop:
                         tFuturePoint_y! = tComputer_y!
                         tFuturePoint_x! = tComputer_x!
@@ -348,7 +327,6 @@ mainLoop:
 
                     on bPledgeMode! goto PledgeModeOff, PledgeModeOn
                         PledgeModeOff:
-                            'poke 53280, 12
                             if tVecComputerPlayer_Ydiff + tVecComputerPlayer_Xdiff <= tVecSimulToPlayer_Ydiff + tVecSimulToPlayer_Xdiff Then bWllFllwMode! = 0
                             goto PledgeModeEnd
                         PledgeModeOn:
@@ -369,9 +347,6 @@ mainLoop:
                                 inc nDirectionScalar!
                         ComputerAgainstWallEnd:
                         nDirectionScalar! = nDirectionScalar! & MAXDIR!
-                    'else
-                    '    textat aSimulators_X![nSimulatorNumber!], aSimulators_Y![nSimulatorNumber!], " "
-                    '    poke 53280, 0
                     endif
         skipMovement:
             bMoveNow! = bMoveNow! ^ 1 ' Exclusive OR...
