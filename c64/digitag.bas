@@ -1,6 +1,6 @@
 include "..\extensions\xcb-ext-joystick\xcb-ext-joystick.bas"
 
-data mazebin![] = incbin "maze.bin"
+data mazebin![] = incbin "cavern.bin"
 
 const RASTER_LINE = $d011 ' $d012
 
@@ -227,8 +227,9 @@ mainLoop:
                                         goto SimulDirExit
                                     SimulDirWest:
                                         dec tFuturePoint_x!
-                                SimulDirExit:
-                                if screenarray![(cast(tFuturePoint_y!) * 40) + tFuturePoint_x!] <> WALL! Then Goto CheckWallExitLoop
+                                SimulDirExit:   'lshift(x, 5) + lshift(x, 3)
+'                               if screenarray![(cast(tFuturePoint_y!) * 40) + tFuturePoint_x!] <> WALL! Then Goto CheckWallExitLoop
+                                if screenarray![(lshift(cast(tFuturePoint_y!), 5) + lshift(cast(tFuturePoint_y!), 3)) + tFuturePoint_x!] <> WALL! Then Goto CheckWallExitLoop
                                 on nSimulatorNumber! goto WalkDirIncrease, WalkDirDecrease
                                     WalkDirIncrease:
                                         inc aSimulators_WalkDir![nSimulatorNumber!]
@@ -243,7 +244,7 @@ mainLoop:
                             aSimulators_Y![nSimulatorNumber!] = tFuturePoint_y!
                             aSimulators_X![nSimulatorNumber!] = tFuturePoint_x!
                                 
-                            if bresenhamMap![(cast(tFuturePoint_y!) * 40) + tFuturePoint_x!] = 1 then goto SimulatorLoopExit
+                            if bresenhamMap![(lshift(cast(tFuturePoint_y!), 5) + lshift(cast(tFuturePoint_y!), 3)) + tFuturePoint_x!] = 1 then goto SimulatorLoopExit
 
                             on nSimulatorNumber! goto WalkDirDecrAgainstWall, WalkDirIncrAgainstWall
                                 WalkDirDecrAgainstWall:
