@@ -9,12 +9,7 @@ const PLAYER_CHAR! = 42 ' "*"
 const COMPUTER_CHAR! = 0 ' "@"
 const EMPTY_CHAR! = 32 ' " "
 
-dim screenarray![1000] @$0400
 dim screenColorArray![1000] @$d800
-
-fun screen_peek!(screen_x!, screen_y!)
-        return \screenarray![(cast(screen_y!) * 40) + screen_x!]
-endfun
 
 tPlayer_x! = 1 : tPlayer_y! = 1
 tComputer_x! = 38 : tComputer_y! = 23
@@ -24,8 +19,8 @@ bMoveNow! = 0
 
 tVecComputerPlayer_Xdiff = 0 : tVecComputerPlayer_Ydiff = 0 : tVecComputerPlayer_XdiffABS = 0 : tVecComputerPlayer_YdiffABS = 0
 tVecSimulToPlayer_Xdiff = 0 : tVecSimulToPlayer_Ydiff = 0
-tVectorDir_X = 0 : tVectorDir_Y = 0
-tWallVectorDir_X = 0 : tWallVectorDir_Y = 0
+tVectorDir_X! = 0 : tVectorDir_Y! = 0
+tWallVectorDir_X! = 0 : tWallVectorDir_Y! = 0
 tWallPosition_Y! = 0
 tWallPosition_X! = 0
 nBresenhamDiff = 0
@@ -40,7 +35,18 @@ dim nSimulatorNumber! fast : nSimulatorNumber! = 0
 
 dim aSimulators_Y![2]: dim aSimulators_X![2]: dim aSimulators_WalkDir![2]: dim aSimulators_StartWalkDir![2]
 
-dim bresenhamMap![1000]
+data scrAddrCache[] = 1024, 1064, 1104, 1144, 1184, 1224, 1264, 1304, 1344, 1384, ~
+                      1424, 1464, 1504, 1544, 1584, 1624, 1664, 1704, 1744, 1784, ~
+                      1824, 1864, 1904, 1944, 1984
+
+data bresenCache[] = 49152, 49192, 49232, 49272, 49312, 49352, 49392, 49432, 49472, 49512, ~
+                     49552, 49592, 49632, 49672, 49712, 49752, 49792, 49832, 49872, 49912, ~
+                     49952, 49992, 50032, 50072, 50112
+
+fun screen_peek!(screen_x!, screen_y!)
+    return peek!(\scrAddrCache[screen_y!] + screen_x!)
+endfun
+
 proc plotLineLow(x0,y0, x1,y1)
     dx = x1 - x0
     dy = y1 - y0
@@ -54,7 +60,8 @@ proc plotLineLow(x0,y0, x1,y1)
 
     x = x0
     repeat
-        \bresenhamMap![(y * 40) + x] = 1 'plot(x, y)
+'       \bresenhamMap![(y * 40) + x] = 1 'plot(x, y)
+        poke \bresenCache[y] + x, 1 'plot(x, y)
         if D > 0 then
                y = y + yi
                D = D - lshift(dx)
@@ -78,7 +85,8 @@ proc plotLineHigh(x0,y0, x1,y1)
 
     y = y0
     repeat
-        \bresenhamMap![(y * 40) + x] = 1 'plot(x, y)
+ '      \bresenhamMap![(y * 40) + x] = 1 'plot(x, y)
+        poke \bresenCache[y] + x, 1 'plot(x, y)
         if D > 0 then
                x = x + xi
                D = D - lshift(dy)
@@ -140,8 +148,8 @@ mainLoop:
                     tVecComputerPlayer_Ydiff = cast(tPlayer_y!) - tComputer_y!
                     tVecComputerPlayer_YdiffABS = abs(tVecComputerPlayer_Ydiff)
                     if tVecComputerPlayer_YdiffABS >= tVecComputerPlayer_XdiffABS Then bLineMoreVertical! = 1 Else bLineMoreVertical! = 0
-                    tVectorDir_X = sgn(tVecComputerPlayer_Xdiff)
-                    tVectorDir_Y = sgn(tVecComputerPlayer_Ydiff)
+                    tVectorDir_X! = cast!(sgn(tVecComputerPlayer_Xdiff))
+                    tVectorDir_Y! = cast!(sgn(tVecComputerPlayer_Ydiff))
                     on bLineMoreVertical! goto BresenhamVertical, BresenhamHorizontal
                         BresenhamVertical:
                             nBresenhamDiff = lshift(tVecComputerPlayer_XdiffABS) - tVecComputerPlayer_YdiffABS
@@ -152,31 +160,31 @@ mainLoop:
                     if nBresenhamDiff <= 0 then
                         on bLineMoreVertical! goto LineMoreVerticalFalse, LineMoreVerticalTrue
                             LineMoreVerticalFalse:
-                                tVectorDir_Y = 0
+                                tVectorDir_Y! = 0
                                 goto LineMoreVerticalEnd
                             LineMoreVerticalTrue:
-                                tVectorDir_X = 0
+                                tVectorDir_X! = 0
                         LineMoreVerticalEnd:
                     endif
 
-                    tFuturePoint_y! = tComputer_y! + cast!(tVectorDir_Y)
+                    tFuturePoint_y! = tComputer_y! + tVectorDir_Y!
                     if screen_peek!(tComputer_x!, tFuturePoint_y!) = WALL! then
-                        tWallVectorDir_Y = tVectorDir_Y
+                        tWallVectorDir_Y! = tVectorDir_Y!
                     else
-                        tWallVectorDir_Y = 0
+                        tWallVectorDir_Y! = 0
                     endif
                     
-                    tWallVectorDir_X = 0
-                    if tWallVectorDir_Y = 0 then
-                        tFuturePoint_x! = tComputer_x! + cast!(tVectorDir_X)
+                    tWallVectorDir_X! = 0
+                    if tWallVectorDir_Y! = 0 then
+                        tFuturePoint_x! = tComputer_x! + tVectorDir_X!
                         if screen_peek!(tFuturePoint_x!, tComputer_y!) = WALL! then
-                            tWallVectorDir_X = tVectorDir_X
+                            tWallVectorDir_X! = tVectorDir_X!
                         endif
                     endif
 
-                    if tWallVectorDir_X <> 0 or tWallVectorDir_Y <> 0 then
+                    if tWallVectorDir_X! <> 0 or tWallVectorDir_Y! <> 0 then
                         '-------------------------- WALL HANDLING -------------------------
-                        on tWallVectorDir_Y + 1 goto wallNorth, noYwall, wallSouth ' -1, 0, 1
+                        on tWallVectorDir_Y! + 1 goto wallNorth, noYwall, wallSouth ' -1, 0, 1
                             wallNorth:
                                 nDirectionScalar! = 0 'north
                                 goto DirectionScalarFound
@@ -184,7 +192,7 @@ mainLoop:
                                 nDirectionScalar! = 2 'south
                                 goto DirectionScalarFound
                             noYwall:
-                                on tWallVectorDir_X + 1 goto wallWest, DirectionScalarFound, wallEast ' -1, 0, 1
+                                on tWallVectorDir_X! + 1 goto wallWest, DirectionScalarFound, wallEast ' -1, 0, 1
                                 wallWest:
                                     nDirectionScalar! = 3 'west
                                     goto DirectionScalarFound
@@ -192,10 +200,10 @@ mainLoop:
                                     nDirectionScalar! = 1 'east
                         DirectionScalarFound:
 
-                        tWallPosition_Y! = tComputer_y! + cast!(tWallVectorDir_Y)
-                        tWallPosition_X! = tComputer_x! + cast!(tWallVectorDir_X)
+                        tWallPosition_Y! = tComputer_y! + tWallVectorDir_Y!
+                        tWallPosition_X! = tComputer_x! + tWallVectorDir_X!
 
-                        memset @bresenhamMap!, 1000, 0
+                        memset 49152, 1000, 0
                         call plotLine(tWallPosition_X!,tWallPosition_Y!, tPlayer_x!, tPlayer_y!)
 
                         'Simulator INIT
@@ -227,9 +235,8 @@ mainLoop:
                                         goto SimulDirExit
                                     SimulDirWest:
                                         dec tFuturePoint_x!
-                                SimulDirExit:   'lshift(x, 5) + lshift(x, 3)
-'                               if screenarray![(cast(tFuturePoint_y!) * 40) + tFuturePoint_x!] <> WALL! Then Goto CheckWallExitLoop
-                                if screenarray![(lshift(cast(tFuturePoint_y!), 5) + lshift(cast(tFuturePoint_y!), 3)) + tFuturePoint_x!] <> WALL! Then Goto CheckWallExitLoop
+                                SimulDirExit:
+                                if peek!(scrAddrCache[tFuturePoint_y!] + tFuturePoint_x!) <> WALL! Then Goto CheckWallExitLoop
                                 on nSimulatorNumber! goto WalkDirIncrease, WalkDirDecrease
                                     WalkDirIncrease:
                                         inc aSimulators_WalkDir![nSimulatorNumber!]
@@ -243,8 +250,8 @@ mainLoop:
 
                             aSimulators_Y![nSimulatorNumber!] = tFuturePoint_y!
                             aSimulators_X![nSimulatorNumber!] = tFuturePoint_x!
-                                
-                            if bresenhamMap![(lshift(cast(tFuturePoint_y!), 5) + lshift(cast(tFuturePoint_y!), 3)) + tFuturePoint_x!] = 1 then goto SimulatorLoopExit
+
+                            if peek!(bresenCache[tFuturePoint_y!] + tFuturePoint_x!) = 1 then goto SimulatorLoopExit
 
                             on nSimulatorNumber! goto WalkDirDecrAgainstWall, WalkDirIncrAgainstWall
                                 WalkDirDecrAgainstWall:
@@ -279,6 +286,7 @@ mainLoop:
                     endif
             
                 WallFollowTrue:
+                    textat aSimulators_X![nSimulatorNumber!], aSimulators_Y![nSimulatorNumber!], "s"
                     WllFllwCheckWallStartLoop:
                         tFuturePoint_y! = tComputer_y!
                         tFuturePoint_x! = tComputer_x!
@@ -312,10 +320,10 @@ mainLoop:
 
                     on bPledgeMode! goto skipPledge, checkPledge
                     checkPledge:
-                        if tWallVectorDir_Y <> 0 and tComputer_y! = tWallPosition_Y! then
+                        if tWallVectorDir_Y! <> 0 and tComputer_y! = tWallPosition_Y! then
                             bPledgeMode! = 0
                         else
-                            if tWallVectorDir_X <> 0 and tComputer_x! = tWallPosition_X! then
+                            if tWallVectorDir_X! <> 0 and tComputer_x! = tWallPosition_X! then
                                 bPledgeMode! = 0
                             endif
                         endif
@@ -328,6 +336,7 @@ mainLoop:
 
                     on bPledgeMode! goto PledgeModeOff, PledgeModeOn
                         PledgeModeOff:
+                            poke 53280, 11
                             if tVecComputerPlayer_Ydiff + tVecComputerPlayer_Xdiff <= tVecSimulToPlayer_Ydiff + tVecSimulToPlayer_Xdiff Then bWllFllwMode! = 0
                             goto PledgeModeEnd
                         PledgeModeOn:
@@ -348,6 +357,9 @@ mainLoop:
                                 inc nDirectionScalar!
                         ComputerAgainstWallEnd:
                         nDirectionScalar! = nDirectionScalar! & MAXDIR!
+                    else
+                        textat aSimulators_X![nSimulatorNumber!], aSimulators_Y![nSimulatorNumber!], " "
+                        poke 53280, 0
                     endif
         skipMovement:
             bMoveNow! = bMoveNow! ^ 1 ' Exclusive OR...
