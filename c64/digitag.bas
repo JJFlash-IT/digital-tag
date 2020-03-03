@@ -11,8 +11,10 @@ const EMPTY_CHAR! = 32 ' " "
 
 dim screenColorArray![1000] @$d800
 
-tPlayer_x! = 1 : tPlayer_y! = 1
-tComputer_x! = 38 : tComputer_y! = 23
+const PLAYERSTART_X! = 1 : const PLAYERSTART_Y! = 1
+const COMPUTERSTART_X! = 38 : const COMPUTERSTART_Y! = 23
+tPlayer_x! = PLAYERSTART_X! : tPlayer_y! = PLAYERSTART_Y! : tPlayer_x_Old! = PLAYERSTART_X! : tPlayer_y_Old! = PLAYERSTART_Y!
+tComputer_x! = COMPUTERSTART_X! : tComputer_y! = COMPUTERSTART_Y! : tComputer_x_Old! = COMPUTERSTART_X! : tComputer_y_Old! = COMPUTERSTART_Y!
 
 Dim tFuturePoint_x! fast : Dim tFuturePoint_y! fast : tFuturePoint_x! = 0: tFuturePoint_y! = 0
 bMoveNow! = 0
@@ -60,7 +62,6 @@ proc plotLineLow(x0,y0, x1,y1)
 
     x = x0
     repeat
-'       \bresenhamMap![(y * 40) + x] = 1 'plot(x, y)
         poke \bresenCache[y] + x, 1 'plot(x, y)
         if D > 0 then
                y = y + yi
@@ -85,7 +86,6 @@ proc plotLineHigh(x0,y0, x1,y1)
 
     y = y0
     repeat
- '      \bresenhamMap![(y * 40) + x] = 1 'plot(x, y)
         poke \bresenCache[y] + x, 1 'plot(x, y)
         if D > 0 then
                x = x + xi
@@ -118,15 +118,20 @@ memset $d800, 1000, 8
 memcpy @mazebin!, $0400, 1000
 
 mainLoop:
+    if tPlayer_x! <> tPlayer_x_Old! or tPlayer_y! <> tPlayer_y_Old! then
+        charat tPlayer_x_Old!, tPlayer_y_Old!, EMPTY_CHAR!
+        tPlayer_x_Old! = tPlayer_x! : tPlayer_y_Old! = tPlayer_y!
+    endif
+    if tComputer_x! <> tComputer_x_Old! or tComputer_y! <> tComputer_y_Old! then
+        charat tComputer_x_Old!, tComputer_y_Old!, EMPTY_CHAR!
+        tComputer_x_Old! = tComputer_x! : tComputer_y_Old! = tComputer_y!
+    endif
     screenColorArray![(cast(tPlayer_y!) * 40) + tPlayer_x!] = 1 'white
     charat tPlayer_x!, tPlayer_y!, PLAYER_CHAR!
     screenColorArray![(cast(tComputer_y!) * 40) + tComputer_x!] = 13 'cyan
     charat tComputer_x!, tComputer_y!, COMPUTER_CHAR!
     wait RASTER_LINE, 128 : wait RASTER_LINE, 128, 128
     wait RASTER_LINE, 128
-
-    charat tPlayer_x!, tPlayer_y!, EMPTY_CHAR!
-    charat tComputer_x!, tComputer_y!, EMPTY_CHAR!
 
     '--------------------------------------------Player movement---------------------------------------------------------
     tFuturePoint_x! = tPlayer_x! : tFuturePoint_y! = tPlayer_y!
@@ -286,7 +291,6 @@ mainLoop:
                     endif
             
                 WallFollowTrue:
-                    textat aSimulators_X![nSimulatorNumber!], aSimulators_Y![nSimulatorNumber!], "s"
                     WllFllwCheckWallStartLoop:
                         tFuturePoint_y! = tComputer_y!
                         tFuturePoint_x! = tComputer_x!
@@ -336,31 +340,30 @@ mainLoop:
 
                     on bPledgeMode! goto PledgeModeOff, PledgeModeOn
                         PledgeModeOff:
-                            poke 53280, 11
-                            if tVecComputerPlayer_Ydiff + tVecComputerPlayer_Xdiff <= tVecSimulToPlayer_Ydiff + tVecSimulToPlayer_Xdiff Then bWllFllwMode! = 0
+                            if tVecComputerPlayer_Ydiff + tVecComputerPlayer_Xdiff <= tVecSimulToPlayer_Ydiff + tVecSimulToPlayer_Xdiff Then
+                                bWllFllwMode! = 0
+                                goto skipMovement
+                            endif
                             goto PledgeModeEnd
                         PledgeModeOn:
                             'if tVecComputerPlayer_Ydiff <= tVecSimulToPlayer_Ydiff And tVecComputerPlayer_Xdiff <= tVecSimulToPlayer_Xdiff Then bWllFllwMode! = 0
                             if tVecComputerPlayer_Ydiff <= tVecSimulToPlayer_Ydiff then
                                 if tVecComputerPlayer_Xdiff <= tVecSimulToPlayer_Xdiff then
                                     bWllFllwMode! = 0
+                                    goto skipMovement
                                 endif
                             endif
                     PledgeModeEnd:
 
-                    if bWllFllwMode! = 1 then
-                        on nSimulatorNumber! goto ComputerDecrAgainstWall, ComputerIncrAgainstWall
-                            ComputerDecrAgainstWall:
-                                dec nDirectionScalar!
-                                goto ComputerAgainstWallEnd
-                            ComputerIncrAgainstWall:
-                                inc nDirectionScalar!
-                        ComputerAgainstWallEnd:
-                        nDirectionScalar! = nDirectionScalar! & MAXDIR!
-                    else
-                        textat aSimulators_X![nSimulatorNumber!], aSimulators_Y![nSimulatorNumber!], " "
-                        poke 53280, 0
-                    endif
+                    on nSimulatorNumber! goto ComputerDecrAgainstWall, ComputerIncrAgainstWall
+                        ComputerDecrAgainstWall:
+                            dec nDirectionScalar!
+                            goto ComputerAgainstWallEnd
+                        ComputerIncrAgainstWall:
+                            inc nDirectionScalar!
+                    ComputerAgainstWallEnd:
+                    nDirectionScalar! = nDirectionScalar! & MAXDIR!
+
         skipMovement:
             bMoveNow! = bMoveNow! ^ 1 ' Exclusive OR...
 goto mainLoop
