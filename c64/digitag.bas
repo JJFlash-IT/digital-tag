@@ -1,6 +1,6 @@
 include "..\extensions\xcb-ext-joystick\xcb-ext-joystick.bas"
 
-data mazebin![] = incbin "cavern.bin"
+data mazebin![] = incbin "slotrace1.bin"
 
 const RASTER_LINE = $d011 ' $d012
 
